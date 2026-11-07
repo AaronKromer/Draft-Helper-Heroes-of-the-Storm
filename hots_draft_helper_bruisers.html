@@ -1,122 +1,324 @@
 <!DOCTYPE html>
-<html lang="it">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Draft Helper - Heroes of the Storm</title>
-    <!-- Caricamento di Tailwind CSS per uno stile moderno e responsive -->
-    <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #0d1117; /* Sfondo scuro per un look da gioco */
-            color: #e5e7eb;
-        }
-        .card {
-            background-color: #161b22;
-            border: 1px solid #30363d;
-        }
-        .suggested-hero {
-            transition: all 0.2s ease-in-out;
-            cursor: pointer;
-            position: relative; /* Necessario per l'overlay dei dettagli */
-        }
+        /* --- Reset --- */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; }
+        html { line-height: 1.5; -webkit-text-size-adjust: 100%; }
+        h1, h2, h3, h4 { font-size: inherit; font-weight: inherit; }
+        ul { list-style: none; padding: 0; }
+        img, svg { display: block; max-width: 100%; }
+        button, input, select { font: inherit; color: inherit; }
+        button { background: none; border: 0; padding: 0; cursor: pointer; }
+        .hidden { display: none; }
 
+        /* --- Theme --- */
+        :root {
+            --allied: #34d399;
+            --enemy: #c084fc;
+            --banned: #f87171;
+        }
+        body {
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            color: #e5e7eb;
+            background-color: #0a0d15;
+            background-image: radial-gradient(ellipse 80% 45% at 50% -10%, rgba(99, 102, 241, .14), transparent 60%);
+            background-attachment: fixed;
+            min-height: 100vh;
+            padding: 1rem;
+        }
+        .app { max-width: 72rem; margin: 0 auto; }
+        .tone-allied { color: var(--allied); }
+        .tone-enemy { color: var(--enemy); }
+        .tone-banned { color: var(--banned); }
+
+        /* --- Header --- */
+        .site-header { text-align: center; margin: .5rem 0 2rem; }
+        .site-header .section-label { justify-content: center; margin-bottom: .5rem; }
+        .page-title { font-size: 2.25rem; line-height: 1.1; font-weight: 700; letter-spacing: -.025em; color: #f3f4f6; margin-bottom: .75rem; }
+        .subtitle { color: #9ca3af; margin-bottom: 1.25rem; }
+        .map-picker { display: inline-flex; align-items: center; gap: .75rem; }
+        .field.compact { width: 14rem; padding: .375rem .75rem; font-size: .875rem; }
+        .field.grow { flex: 1; width: auto; padding-top: .625rem; padding-bottom: .625rem; }
+
+        /* --- Shared components --- */
+        .card {
+            background-color: rgba(21, 26, 40, .85);
+            border: 1px solid rgba(255, 255, 255, .07);
+            border-radius: 1rem;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, .25);
+        }
+        .section-label {
+            display: flex; align-items: center; gap: .5rem;
+            font-size: .75rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: #9ca3af;
+        }
+        .field {
+            width: 100%; background-color: rgba(8, 11, 20, .7); color: #f3f4f6;
+            border: 1px solid rgba(255, 255, 255, .1); border-radius: .75rem; padding: .7rem .9rem;
+            transition: border-color .15s, box-shadow .15s;
+        }
+        .field:focus { outline: none; border-color: rgba(255, 255, 255, .35); box-shadow: 0 0 0 3px rgba(255, 255, 255, .08); }
+        .field::placeholder { color: #6b7280; }
+        select.field { color-scheme: dark; }
+        .chip {
+            display: inline-flex; align-items: center; padding: .2rem .65rem; border-radius: 9999px;
+            font-size: .75rem; font-weight: 600; color: #d1d5db; background: rgba(255, 255, 255, .06); border: 1px solid rgba(255, 255, 255, .08);
+        }
+        .cta {
+            padding: .75rem 2.25rem; border-radius: 9999px;
+            font-weight: 600; font-size: .8rem; letter-spacing: .1em; text-transform: uppercase;
+            background-color: #e5e7eb; color: #0a0d15;
+            transition: background-color .15s ease, transform .15s ease;
+        }
+        .cta:hover { background-color: #fff; transform: translateY(-1px); }
+        .cta:focus-visible { outline: 2px solid rgba(255, 255, 255, .6); outline-offset: 3px; }
+        .cta-wrap { text-align: center; margin-bottom: 2.5rem; }
+        .notice { text-align: center; padding: 1rem; border-radius: .75rem; border: 1px solid; }
+        .notice.error { color: #fcd34d; background: rgba(245, 158, 11, .1); border-color: rgba(245, 158, 11, .3); }
+        .notice.info { color: #7dd3fc; background: rgba(14, 165, 233, .1); border-color: rgba(14, 165, 233, .3); }
+        .muted { color: #9ca3af; }
+        @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+        /* --- Recommendations --- */
+        .results { padding: 1.5rem; }
+        .results-title { font-size: 1.5rem; line-height: 2rem; font-weight: 700; text-align: center; margin-bottom: 1rem; }
+        .results .role-filter { justify-content: center; }
+        .suggestions { display: flex; flex-direction: column; gap: .75rem; }
+        .suggestions > .muted { text-align: center; }
+        .role-summary {
+            display: flex; flex-direction: column; gap: .75rem; margin-bottom: .5rem; padding: 1rem;
+            border-radius: .75rem; background: rgba(0, 0, 0, .25); border: 1px solid rgba(255, 255, 255, .05);
+        }
+        .role-summary-row { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+        .role-summary-row .section-label { margin-right: .25rem; }
+        .chip-empty { font-size: .75rem; color: #6b7280; }
+        .suggested-hero {
+            padding: 1rem;
+            transition: transform .15s ease, border-color .15s ease;
+            cursor: pointer;
+            position: relative;
+            animation: rise .35s ease both;
+        }
+        .suggested-hero:hover { transform: translateY(-1px); border-color: rgba(255, 255, 255, .2); }
+        .suggestion-row { display: flex; align-items: center; gap: 1rem; }
+        .rank {
+            width: 1.75rem; height: 1.75rem; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+            border-radius: 9999px; font-size: .875rem; font-weight: 700; background: #374151; color: #d1d5db;
+        }
+        .rank.first { background: #e5e7eb; color: #111827; }
+        .suggestion-info { flex: 1; min-width: 0; }
+        .suggestion-name { font-size: 1.125rem; line-height: 1.75rem; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .suggestion-role { display: flex; align-items: center; gap: .375rem; font-size: .875rem; }
+        .role-icon { width: 1rem; height: 1rem; object-fit: contain; }
+        .role-tank { color: #f87171; }
+        .role-bruiser { color: #fb923c; }
+        .role-melee-assassin { color: #facc15; }
+        .role-ranged-assassin { color: #c084fc; }
+        .role-healer { color: #4ade80; }
+        .role-support { color: #2dd4bf; }
+        .suggestion-score { text-align: right; flex-shrink: 0; }
+        .score-value { display: block; font-size: 1.5rem; line-height: 2rem; font-weight: 700; color: #f3f4f6; }
+        .score-label { display: block; font-size: .75rem; letter-spacing: .05em; text-transform: uppercase; color: #6b7280; }
+        .chevron { width: 1.25rem; height: 1.25rem; flex-shrink: 0; color: #6b7280; transition: transform .2s; }
+        .suggested-hero.open .chevron { transform: rotate(180deg); }
+        .details {
+            margin-top: 1rem; padding: 1rem; border-radius: .75rem;
+            background: rgba(0, 0, 0, .3); border: 1px solid rgba(255, 255, 255, .05);
+        }
+        .details .section-label { margin-bottom: .5rem; }
+        .details ul { display: flex; flex-direction: column; gap: .25rem; padding-left: 1.25rem; list-style: disc; font-size: .875rem; color: #d1d5db; }
+
+        /* --- Draft board: layout, team panels, switcher, filters, pagination --- */
+        .board { display: flex; flex-direction: column; align-items: stretch; gap: 1.5rem; margin-bottom: 2.5rem; }
+        .board-main { flex: 1; min-width: 0; padding: 1.25rem; }
+        .panel { transition: border-color .2s; }
+        .panel.side { padding: 1rem; flex-shrink: 0; }
+        .panel.allied.active { border-color: rgba(52, 211, 153, .5); }
+        .panel.enemy.active { border-color: rgba(192, 132, 252, .5); }
+        .panel.banned.active { border-color: rgba(248, 113, 113, .5); }
+        .team-title { font-size: .75rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; text-align: center; margin-bottom: .75rem; }
+        .team-count { display: block; font-weight: 600; color: #6b7280; }
+        .slots { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: .75rem; }
+        .ban-panel { margin-top: 1.25rem; padding: .75rem; border-radius: .75rem; border: 1px solid transparent; }
+        .ban-panel .section-label { margin-bottom: .5rem; }
+        .ban-panel .team-count { display: inline; }
+        .ban-panel .slots { justify-content: flex-start; gap: .5rem; }
+        .toolbar { display: flex; flex-direction: column; gap: .75rem; margin-bottom: 1rem; }
+        .team-switcher {
+            display: flex; flex-shrink: 0; overflow: hidden; border-radius: .75rem;
+            border: 1px solid rgba(255, 255, 255, .1); background: rgba(0, 0, 0, .3);
+        }
+        .role-filter { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin-bottom: 1.25rem; }
+        .hero-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1rem .75rem; }
+        .empty-note { grid-column: 1 / -1; text-align: center; padding: 1.5rem 0; color: #9ca3af; }
+        .pagination { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: .5rem; margin-top: 1.25rem; }
+        .team-btn {
+            display: flex; align-items: center; gap: .45rem; padding: .625rem 1rem; font-size: .875rem; font-weight: 600; color: #9ca3af;
+            transition: background-color .15s, color .15s;
+        }
+        .team-btn + .team-btn { border-left: 1px solid rgba(255, 255, 255, .1); }
+        .team-btn::before { content: ''; width: .5rem; height: .5rem; border-radius: 9999px; background: currentColor; opacity: .7; }
+        .team-btn:hover { color: #e5e7eb; background-color: rgba(255, 255, 255, .05); }
+        .team-btn.active { color: #fff; }
+        .team-btn.active::before { opacity: 1; }
+        .team-btn.active[data-team="allied"] { background-color: rgba(16, 185, 129, .7); }
+        .team-btn.active[data-team="enemy"] { background-color: rgba(147, 51, 234, .7); }
+        .team-btn.active[data-team="banned"] { background-color: rgba(220, 38, 38, .7); }
+        .role-btn {
+            width: 2.5rem; height: 2.5rem; border-radius: 9999px; overflow: hidden; padding: 0.15rem;
+            background-color: rgba(8, 11, 20, .7); border: 2px solid rgba(255, 255, 255, .1); color: #9ca3af;
+            display: flex; align-items: center; justify-content: center; font-size: .7rem; font-weight: 700;
+            opacity: .65; transition: opacity .15s, border-color .15s, background-color .15s;
+        }
+        .role-btn:hover { opacity: 1; }
+        .role-btn.active { opacity: 1; border-color: #e5e7eb; background-color: rgba(255, 255, 255, .1); }
+        .role-btn img { width: 100%; height: 100%; object-fit: contain; }
+        .page-btn {
+            min-width: 2.25rem; height: 2.25rem; padding: 0 .6rem; border-radius: 9999px;
+            background-color: rgba(255, 255, 255, .06); color: #d1d5db; font-size: .85rem; font-weight: 600;
+            transition: background-color .15s;
+        }
+        .page-btn:hover:not(:disabled) { background-color: rgba(255, 255, 255, .14); }
+        .page-btn:disabled { opacity: .3; cursor: default; }
+        .page-btn.active { background-color: #e5e7eb; color: #0a0d15; }
+        /* --- Slots (team picks and bans) --- */
+        .slot {
+            width: 4rem; height: 4rem; border-radius: 9999px; overflow: hidden;
+            border: 2px dashed rgba(255, 255, 255, .18); background-color: rgba(8, 11, 20, .6);
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0; position: relative; cursor: pointer;
+            transition: border-color .15s, transform .15s;
+        }
+        .slot:not(.filled)::before { content: attr(data-index); color: rgba(255, 255, 255, .2); font-weight: 700; font-size: 1.1rem; }
+        .slot.banned:not(.filled)::before { content: '\2715'; font-size: .85rem; }
+        .slot:not(.filled):hover { border-color: rgba(255, 255, 255, .4); }
+        .slot.filled { border-style: solid; }
+        .slot.filled:hover { transform: scale(1.06); }
+        .slot.filled:hover::after {
+            content: '\2715'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+            background: rgba(0, 0, 0, .6); color: #fff; font-size: 1.25rem;
+        }
+        .slot.allied.filled { border-color: var(--allied); }
+        .slot.enemy.filled { border-color: var(--enemy); }
+        .slot.banned { width: 2.75rem; height: 2.75rem; }
+        .slot.banned.filled { border-color: var(--banned); }
+        .slot.banned.filled img { filter: grayscale(.7); }
+        .slot img, .hero-tile img { width: 100%; height: 100%; object-fit: cover; }
+        .slot.neutral { border-color: rgba(255, 255, 255, .15); }
+
+        /* --- Hero grid tiles --- */
+        .hero-tile { cursor: pointer; text-align: center; transition: transform .15s; }
+        .hero-tile:hover { transform: translateY(-2px); }
+        .hero-tile .portrait {
+            width: 100%; aspect-ratio: 1 / 1; border-radius: 9999px; overflow: hidden;
+            border: 2px solid rgba(255, 255, 255, .1); background-color: #0a0d16; position: relative;
+            display: flex; align-items: center; justify-content: center; font-weight: 700; color: #9ca3af;
+            transition: border-color .15s;
+        }
+        .hero-tile:hover .portrait { border-color: rgba(255, 255, 255, .45); }
+        .hero-tile .hero-name {
+            font-size: .68rem; color: #9ca3af; margin-top: .35rem; line-height: 1.15;
+            overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+        }
+        .hero-tile:hover .hero-name { color: #f3f4f6; }
+        .hero-tile.allied .portrait { border-color: var(--allied); }
+        .hero-tile.enemy .portrait { border-color: var(--enemy); }
+        .hero-tile.banned .portrait { border-color: var(--banned); }
+        .hero-tile.allied > *, .hero-tile.enemy > *, .hero-tile.banned > * { opacity: .4; }
+        .hero-tile.allied .portrait, .hero-tile.enemy .portrait, .hero-tile.banned .portrait { opacity: .55; }
+        .hero-tile.banned img { filter: grayscale(1); }
+        .slot.large { width: 3.5rem; height: 3.5rem; pointer-events: none; }
+
+        /* --- Responsive --- */
+        @media (min-width: 640px) {
+            .toolbar { flex-direction: row; }
+            .hero-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+        }
+        @media (min-width: 768px) {
+            body { padding: 2rem; }
+            .page-title { font-size: 3rem; }
+            .hero-grid { grid-template-columns: repeat(8, minmax(0, 1fr)); }
+        }
+        @media (min-width: 1024px) {
+            .board { flex-direction: row; }
+            .panel.side { width: 7rem; }
+            .panel.side .slots { flex-direction: column; flex-wrap: nowrap; }
+        }
     </style>
 </head>
-<body class="p-4 md:p-8 min-h-screen">
+<body>
 
-    <header class="text-center mb-10">
-        <h1 class="text-4xl font-bold text-red-500 mb-2">Heroes of the Storm Draft Helper</h1>
-        <p class="text-xl text-gray-400">Enter draft details to get the best hero recommendation.</p>
+    <header class="site-header">
+        <p class="section-label">Heroes of the Storm</p>
+        <h1 class="page-title">Draft Helper</h1>
+        <p class="subtitle">Enter the draft to get the best hero recommendation.</p>
+        <div class="map-picker">
+            <label for="mapSelect" class="section-label">Map</label>
+            <select id="mapSelect" class="field compact">
+                <!-- Options populated by JS -->
+            </select>
+        </div>
     </header>
 
-    <div id="app" class="max-w-4xl mx-auto">
-        
-        <!-- Controlli di Input -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-10">
-            
-            <!-- Selezione Mappa -->
-            <div class="card p-5 rounded-lg shadow-lg">
-                <label for="mapSelect" class="block text-lg font-semibold mb-3 text-red-400">1. Current Map</label>
-                <select id="mapSelect" class="w-full bg-gray-700 text-white border border-gray-600 rounded-lg p-3 focus:ring-red-500 focus:border-red-500 transition duration-150">
-                    <!-- Options populated by JS -->
-                </select>
+    <div id="app" class="app">
+
+        <!-- Draft board: allied team | hero grid | enemy team -->
+        <div class="board">
+
+            <div id="alliedPanel" class="panel side allied card">
+                <h3 class="team-title tone-allied">Allies <span id="alliedCount" class="team-count"></span></h3>
+                <div id="alliedSlots" class="slots"></div>
             </div>
-            
-            <!-- Eroi Alleati -->
-            <div class="card p-5 rounded-lg shadow-lg">
-                <label for="alliedHeroes" class="block text-lg font-semibold mb-3 text-green-400">2. Allied Heroes </label>
-                <input type="text" 
-                        id="alliedSearch" 
-                        placeholder="Search allied hero..."
-                        oninput="filterHeroes('alliedHeroesContainer', this.value)"
-                        class="w-full mb-3 bg-gray-700 text-white border border-gray-600 rounded-lg p-2 focus:ring-green-500 focus:border-green-500">
-                <div id="alliedHeroesContainer" class="space-y-2 max-h-40 overflow-y-auto pr-2 bg-gray-800 p-2 rounded-lg border border-gray-700">
-                    <!-- Checkboxes populated by JS -->
+
+            <div class="board-main card">
+                <div class="toolbar">
+                    <div id="teamSwitcher" class="team-switcher">
+                        <button type="button" data-team="allied" class="team-btn">Ally</button>
+                        <button type="button" data-team="enemy" class="team-btn">Enemy</button>
+                        <button type="button" data-team="banned" class="team-btn">Ban</button>
+                    </div>
+                    <input type="text" id="heroSearch" placeholder="Search hero..." autocomplete="off" class="field grow">
                 </div>
-            </div>
-            
-            <!-- Eroi Avversari -->
-            <div class="card p-5 rounded-lg shadow-lg">
-                <label for="enemyHeroes" class="block text-lg font-semibold mb-3 text-purple-400">3. Enemy Heroes</label>
-                <input type="text" 
-                        id="enemySearch" 
-                        placeholder="Search banned hero..."
-                        oninput="filterHeroes('enemyHeroesContainer', this.value)"
-                        class="w-full mb-3 bg-gray-700 text-white border border-gray-600 rounded-lg p-2 focus:ring-purple-500 focus:border-purple-500">
-                <div id="enemyHeroesContainer" class="space-y-2 max-h-40 overflow-y-auto pr-2 bg-gray-800 p-2 rounded-lg border border-gray-700">
-                    <!-- Checkboxes populated by JS -->
+                <div id="heroRoleFilter" class="role-filter"></div>
+                <div id="heroGrid" class="hero-grid"></div>
+                <div id="heroPagination" class="pagination"></div>
+                <div id="bannedPanel" class="panel ban-panel banned">
+                    <h3 class="section-label tone-banned">Banned <span id="bannedCount" class="team-count"></span></h3>
+                    <div id="bannedSlots" class="slots"></div>
                 </div>
             </div>
 
-            <!-- Eroi Bannati -->
-            <div class="card p-5 rounded-lg shadow-lg">
-                <label for="bannedHeroes" class="block text-lg font-semibold mb-3 text-purple-400">4. Banned Heroes</label>
-                <input type="text" 
-                        id="enemySearch" 
-                        placeholder="Search banned hero..."
-                        oninput="filterHeroes('bannedHeroesContainer', this.value)"
-                        class="w-full mb-3 bg-gray-700 text-white border border-gray-600 rounded-lg p-2 focus:ring-purple-500 focus:border-purple-500">
-                <div id="bannedHeroesContainer" class="space-y-2 max-h-40 overflow-y-auto pr-2 bg-gray-800 p-2 rounded-lg border border-gray-700">
-                    <!-- Checkboxes populated by JS -->
-                </div>
+            <div id="enemyPanel" class="panel side enemy card">
+                <h3 class="team-title tone-enemy">Enemies <span id="enemyCount" class="team-count"></span></h3>
+                <div id="enemySlots" class="slots"></div>
             </div>
 
-            <!-- Ruolo da pickare checkbox -->
-            <div class="card p-5 rounded-lg shadow-lg">
-                <label for="roleToPick" class="block text-lg font-semibold mb-3 text-purple-400">5. Role to Pick</label>
-                <select id="roleToPick" class="w-full bg-gray-700 text-white border border-gray-600 rounded-lg p-3 focus:ring-red-500 focus:border-red-500 transition duration-150">
-                    <!-- Checkboxes populated by JS -->
-                </select>
-            </div>
-            
         </div>
-        
-        <!-- Bottone di Calcolo -->
-        <div class="text-center mb-10">
-            <button onclick="calculateSuggestions()" 
-                    class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-8 rounded-lg shadow-xl transition duration-300 transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-red-500 focus:ring-opacity-50">
-                Find the Best Hero
-            </button>
+
+        <!-- Calculate button -->
+        <div class="cta-wrap">
+            <button onclick="calculateSuggestions()" class="cta">Find the Best Hero</button>
         </div>
-        
-        <!-- Risultati della Raccomandazione -->
-        <div class="card p-6 rounded-lg shadow-xl" id="resultsContainer">
-            <h2 class="text-2xl font-semibold mb-4 text-center">Hero Recommendations</h2>
-            <div id="suggestionsList" class="space-y-4">
-                <p class="text-center text-gray-400">Select the map and heroes to begin.</p>
+
+        <!-- Recommendation results -->
+        <div class="results card" id="resultsContainer">
+            <h2 class="results-title">Hero Recommendations</h2>
+            <div id="suggestionRoleFilter" class="role-filter"></div>
+            <div id="suggestionsList" class="suggestions">
+                <p class="muted">Select the map and heroes to begin.</p>
             </div>
         </div>
 
     </div>
 
     <script>
-        // Mappe complete
+        // Maps used for the map selector and the per-map hero scores
         const MAPS = [
             'Battlefield of Eternity',
-            'Warhead Junction', 
+            'Warhead Junction',
             'Blackhearts Bay',
             'Infernal Shrines',
             'Towers of Doom',
@@ -130,13 +332,8 @@
             'Tomb of the Spider Queen',
         ];
 
-        // Mappa predefinita dei punteggi per gli eroi appena aggiunti
-        const DEFAULT_MAP_SCORES = MAPS.reduce((acc, map) => {
-            acc[map] = 3; // Punteggio neutro
-            return acc;
-        }, {});
-
-        // --- DATASET ESTESO E AGGIORNATO CON TUTTI GLI EROI RICHIESTI ---
+        // --- HERO DATASET ---
+        // mapScore: 1-5 strength per map; synergy: allies it pairs well with; countered: enemies that counter it
         const HEROES_DATA = [
             // ================================== TANK ==================================
             { id: 'anubarak', name: 'Anub\'arak', role: 'Tank', mapScore: { 'Battlefield of Eternity': 2, 'Warhead Junction': 3, 'Blackhearts Bay': 3,'Infernal Shrines': 3, 'Towers of Doom': 4, 'Cursed Hollow': 4, 'Volskaya Foundry': 3, 'Braxis Holdout': 1, 'Alterac Pass': 5, 'Dragon Shire': 4, 'Garden of Terror': 4, 'Sky Temple': 3, 'Tomb of the Spider Queen': 2 }, synergy: ['jaina', 'kaelthas','butcher','rehgar','greymane'], countered: ['malthael', 'tracer', 'valla', 'zuljin', 'varian-s', 'leoric'] },
@@ -196,7 +393,7 @@
             { id: 'orphea', name: 'Orphea', role: 'Ranged Assassin', mapScore: { 'Battlefield of Eternity': 1, 'Warhead Junction': 3, 'Blackhearts Bay': 1,'Infernal Shrines': 4, 'Towers of Doom': 3, 'Cursed Hollow': 4, 'Volskaya Foundry': 3, 'Braxis Holdout': 5, 'Alterac Pass': 3, 'Dragon Shire': 4, 'Garden of Terror': 4, 'Sky Temple': 5, 'Tomb of the Spider Queen': 5 }, synergy: ['blaze', 'blaze-b', 'johanna', 'maiev', 'xul', 'malganis', 'varian-t', 'etc'], countered: ['anubarak', 'genji', 'chen', 'johanna', 'lunara', 'muradin'] },
             { id: 'probius', name: 'Probius', role: 'Ranged Assassin', mapScore: { 'Battlefield of Eternity': 1, 'Warhead Junction': 3, 'Blackhearts Bay': 1,'Infernal Shrines': 4, 'Towers of Doom': 5, 'Cursed Hollow': 3, 'Volskaya Foundry': 4, 'Braxis Holdout': 5, 'Alterac Pass': 4, 'Dragon Shire': 3, 'Garden of Terror': 3, 'Sky Temple': 3, 'Tomb of the Spider Queen': 4 }, synergy: ['diablo', 'etc', 'anubarak', 'arthas', 'malfurion'], countered: ['tracer', 'kerrigan', 'zeratul', 'alarak'] },
             { id: 'raynor', name: 'Raynor', role: 'Ranged Assassin', mapScore: { 'Battlefield of Eternity': 5, 'Warhead Junction': 3, 'Blackhearts Bay': 3,'Infernal Shrines': 5, 'Towers of Doom': 4, 'Cursed Hollow': 3, 'Volskaya Foundry': 3, 'Braxis Holdout': 3, 'Alterac Pass': 3, 'Dragon Shire': 5, 'Garden of Terror': 3, 'Sky Temple': 3, 'Tomb of the Spider Queen': 4 }, synergy: ['etc', 'thrall', 'garrosh', 'morales'], countered: ['johanna', 'cassia', 'artanis', 'lili'] },
-            { id: 'sghammer', name: 'Sgt. Hammer', role: 'Ranged Assassin', mapScore: { 'Battlefield of Eternity': 5, 'Warhead Junction': 1, 'Blackhearts Bay': 2,'Infernal Shrines': 5, 'Towers of Doom': 4, 'Cursed Hollow': 2, 'Volskaya Foundry': 3, 'Braxis Holdout': 5, 'Alterac Pass': 3, 'Dragon Shire': 3, 'Garden of Terror': 2, 'Sky Temple': 3, 'Tomb of the Spider Queen': 1 }, synergy: ['johanna', 'morales', 'ana', 'auriel', 'etc'], countered: ['artanis', 'stitches', 'li-ming', 'kethuzad', 'chromie'] },
+            { id: 'sghammer', name: 'Sgt. Hammer', role: 'Ranged Assassin', mapScore: { 'Battlefield of Eternity': 5, 'Warhead Junction': 1, 'Blackhearts Bay': 2,'Infernal Shrines': 5, 'Towers of Doom': 4, 'Cursed Hollow': 2, 'Volskaya Foundry': 3, 'Braxis Holdout': 5, 'Alterac Pass': 3, 'Dragon Shire': 3, 'Garden of Terror': 2, 'Sky Temple': 3, 'Tomb of the Spider Queen': 1 }, synergy: ['johanna', 'morales', 'ana', 'auriel', 'etc'], countered: ['artanis', 'stitches', 'li-ming', 'kelthuzad', 'chromie'] },
             { id: 'sylvanas', name: 'Sylvanas', role: 'Ranged Assassin', mapScore: { 'Battlefield of Eternity': 3, 'Warhead Junction': 1, 'Blackhearts Bay': 3,'Infernal Shrines': 4, 'Towers of Doom': 3, 'Cursed Hollow': 3, 'Volskaya Foundry': 5, 'Braxis Holdout': 5, 'Alterac Pass': 5, 'Dragon Shire': 4, 'Garden of Terror': 3, 'Sky Temple': 3, 'Tomb of the Spider Queen': 5 }, synergy: ['diablo', 'etc', 'tyrande', 'valla', 'tassadar', 'jaina'], countered: ['nova', 'genji', 'valeera', 'zeratul', 'diablo', 'butcher', 'chen'] },
             { id: 'tassadar', name: 'Tassadar', role: 'Ranged Assassin', mapScore: { 'Battlefield of Eternity': 2, 'Warhead Junction': 3, 'Blackhearts Bay': 3,'Infernal Shrines': 5, 'Towers of Doom': 3, 'Cursed Hollow': 2, 'Volskaya Foundry': 5, 'Braxis Holdout': 5, 'Alterac Pass': 3, 'Dragon Shire': 3, 'Garden of Terror': 4, 'Sky Temple': 3, 'Tomb of the Spider Queen': 5 }, synergy: ['etc', 'maiev', 'johanna', 'genji', 'zeratul'], countered: ['tracer', 'anubarak', 'greymane', 'kerrigan', 'zeratul'] },
             { id: 'tracer', name: 'Tracer', role: 'Ranged Assassin', mapScore: { 'Battlefield of Eternity': 3, 'Warhead Junction': 4, 'Blackhearts Bay': 3,'Infernal Shrines': 1, 'Towers of Doom': 5, 'Cursed Hollow': 4, 'Volskaya Foundry': 4, 'Braxis Holdout': 3, 'Alterac Pass': 3, 'Dragon Shire': 5, 'Garden of Terror': 3, 'Sky Temple': 5, 'Tomb of the Spider Queen': 1 }, synergy: ['abathur', 'brightwing', 'malfurion', 'anduin', 'jaina', 'tassadar', 'guldan', 'kaelthas'], countered: ['varian-t', 'diablo', 'sghammer', 'raynor', 'medivh', 'brightwing'] },
@@ -207,12 +404,12 @@
 
             // ================================== ASSASSIN MELEE ==================================
             { id: 'alarak', name: 'Alarak', role: 'Melee Assassin', mapScore: { 'Battlefield of Eternity': 5, 'Warhead Junction': 3, 'Blackhearts Bay': 1,'Infernal Shrines': 1, 'Towers of Doom': 4, 'Cursed Hollow': 3, 'Volskaya Foundry': 3, 'Braxis Holdout': 3, 'Alterac Pass': 3, 'Dragon Shire': 3, 'Garden of Terror': 3, 'Sky Temple': 1, 'Tomb of the Spider Queen': 3 }, synergy: ['raynor', 'etc', 'jaina', 'garrosh'], countered: ['etc', 'deathwing', 'johanna', 'medivh'] },
-            { id: 'illidan', name: 'Illidan', role: 'Melee Assassin', mapScore: { 'Battlefield of Eternity': 1, 'Warhead Junction': 4, 'Blackhearts Bay': 5,'Infernal Shrines': 3, 'Towers of Doom': 2, 'Cursed Hollow': 5, 'Volskaya Foundry': 2, 'Braxis Holdout': 1, 'Alterac Pass': 3, 'Dragon Shire': 3, 'Garden of Terror': 5, 'Sky Temple': 5, 'Tomb of the Spider Queen': 3 }, synergy: ['reghar', 'abathur', 'medivh', 'tyrael', 'uther', 'zarya'], countered: ['etc', 'sonya', 'arthas', 'brightwing', 'lili', 'johanna', 'varian-t', 'muradin', 'uther'] },
+            { id: 'illidan', name: 'Illidan', role: 'Melee Assassin', mapScore: { 'Battlefield of Eternity': 1, 'Warhead Junction': 4, 'Blackhearts Bay': 5,'Infernal Shrines': 3, 'Towers of Doom': 2, 'Cursed Hollow': 5, 'Volskaya Foundry': 2, 'Braxis Holdout': 1, 'Alterac Pass': 3, 'Dragon Shire': 3, 'Garden of Terror': 5, 'Sky Temple': 5, 'Tomb of the Spider Queen': 3 }, synergy: ['rehgar', 'abathur', 'medivh', 'tyrael', 'uther', 'zarya'], countered: ['etc', 'sonya', 'arthas', 'brightwing', 'lili', 'johanna', 'varian-t', 'muradin', 'uther'] },
             { id: 'kerrigan', name: 'Kerrigan', role: 'Melee Assassin', mapScore: { 'Battlefield of Eternity': 3, 'Warhead Junction': 1, 'Blackhearts Bay': 1,'Infernal Shrines': 5, 'Towers of Doom': 3, 'Cursed Hollow': 3, 'Volskaya Foundry': 4, 'Braxis Holdout': 5, 'Alterac Pass': 4, 'Dragon Shire': 4, 'Garden of Terror': 3, 'Sky Temple': 3, 'Tomb of the Spider Queen': 5 }, synergy: ['uther', 'tyrael', 'tyrande', 'medivh'], countered: ['tyrael', 'etc', 'garrosh', 'uther', 'medivh', 'auriel', 'lucio'] },
             { id: 'kharazim-dps', name: 'Kharazim', role: 'Melee Assassin', mapScore: { 'Battlefield of Eternity': 5, 'Warhead Junction': 3, 'Blackhearts Bay': 3,'Infernal Shrines': 3, 'Towers of Doom': 4, 'Cursed Hollow': 3, 'Volskaya Foundry': 3, 'Braxis Holdout': 1, 'Alterac Pass': 3, 'Dragon Shire': 5, 'Garden of Terror': 3, 'Sky Temple': 5, 'Tomb of the Spider Queen': 1 }, synergy: ['etc', 'genji', 'garrosh', 'anubarak', 'greymane'], countered: ['uther', 'johanna', 'medivh', 'auriel'] },
             { id: 'maiev', name: 'Maiev', role: 'Melee Assassin', mapScore: { 'Battlefield of Eternity': 2, 'Warhead Junction': 1, 'Blackhearts Bay': 3,'Infernal Shrines': 5, 'Towers of Doom': 3, 'Cursed Hollow': 5, 'Volskaya Foundry': 4, 'Braxis Holdout': 5, 'Alterac Pass': 3, 'Dragon Shire': 4, 'Garden of Terror': 4, 'Sky Temple': 3, 'Tomb of the Spider Queen': 5 }, synergy: ['blaze', 'blaze-b', 'etc', 'jaina', 'tassadar', 'deckard', 'malfurion'], countered: ['arthas', 'tyrael', 'johanna', 'lunara', 'tracer', 'lucio', 'brightwing'] },
             { id: 'murky', name: 'Murky', role: 'Melee Assassin', mapScore: { 'Battlefield of Eternity': 1, 'Warhead Junction': 3, 'Blackhearts Bay': 1,'Infernal Shrines': 5, 'Towers of Doom': 4, 'Cursed Hollow': 3, 'Volskaya Foundry': 4, 'Braxis Holdout': 1, 'Alterac Pass': 3, 'Dragon Shire': 5, 'Garden of Terror': 5, 'Sky Temple': 3, 'Tomb of the Spider Queen': 1 }, synergy: ['johanna', 'zarya', 'brightwing'], countered: ['sonya', 'raynor', 'falstad'] },
-            { id: 'qhira', name: 'Qhira', role: 'Melee Assassin', mapScore: { 'Battlefield of Eternity': 3, 'Warhead Junction': 3, 'Blackhearts Bay': 3,'Infernal Shrines': 3, 'Towers of Doom': 2, 'Cursed Hollow': 3, 'Volskaya Foundry': 3, 'Braxis Holdout': 3, 'Alterac Pass': 3, 'Dragon Shire': 5, 'Garden of Terror': 3, 'Sky Temple': 3, 'Tomb of the Spider Queen': 5 }, synergy: ['uther', 'reghar', 'abathur', 'anubarak'], countered: ['lucio', 'uther', 'etc', 'diablo', 'garrosh', 'tracer'] },
+            { id: 'qhira', name: 'Qhira', role: 'Melee Assassin', mapScore: { 'Battlefield of Eternity': 3, 'Warhead Junction': 3, 'Blackhearts Bay': 3,'Infernal Shrines': 3, 'Towers of Doom': 2, 'Cursed Hollow': 3, 'Volskaya Foundry': 3, 'Braxis Holdout': 3, 'Alterac Pass': 3, 'Dragon Shire': 5, 'Garden of Terror': 3, 'Sky Temple': 3, 'Tomb of the Spider Queen': 5 }, synergy: ['uther', 'rehgar', 'abathur', 'anubarak'], countered: ['lucio', 'uther', 'etc', 'diablo', 'garrosh', 'tracer'] },
             { id: 'samuro', name: 'Samuro', role: 'Melee Assassin', mapScore: { 'Battlefield of Eternity': 4, 'Warhead Junction': 3, 'Blackhearts Bay': 3,'Infernal Shrines': 3, 'Towers of Doom': 4, 'Cursed Hollow': 2, 'Volskaya Foundry': 3, 'Braxis Holdout': 5, 'Alterac Pass': 4, 'Dragon Shire': 5, 'Garden of Terror': 3, 'Sky Temple': 4, 'Tomb of the Spider Queen': 1 }, synergy: ['deckard', 'malfurion', 'abathur', 'sylvanas'], countered: ['etc', 'lucio', 'yrel', 'cassia', 'orphea', 'medivh', 'diablo', 'stukov'] },
             { id: 'butcher', name: 'The Butcher', role: 'Melee Assassin', mapScore: { 'Battlefield of Eternity': 1, 'Warhead Junction': 4, 'Blackhearts Bay': 1,'Infernal Shrines': 3, 'Towers of Doom': 5, 'Cursed Hollow': 3, 'Volskaya Foundry': 3, 'Braxis Holdout': 1, 'Alterac Pass': 3, 'Dragon Shire': 5, 'Garden of Terror': 4, 'Sky Temple': 5, 'Tomb of the Spider Queen': 5 }, synergy: ['abathur', 'uther', 'tyrande', 'tyrael'], countered: ['johanna', 'uther', 'etc', 'brightwing'] },
             { id: 'valeera', name: 'Valeera', role: 'Melee Assassin', mapScore: { 'Battlefield of Eternity': 3, 'Warhead Junction': 5, 'Blackhearts Bay': 4,'Infernal Shrines': 3, 'Towers of Doom': 3, 'Cursed Hollow': 5, 'Volskaya Foundry': 3, 'Braxis Holdout': 3, 'Alterac Pass': 3, 'Dragon Shire': 5, 'Garden of Terror': 3, 'Sky Temple': 4, 'Tomb of the Spider Queen': 1 }, synergy: ['garrosh', 'etc', 'abathur', 'thrall', 'jaina'], countered: ['etc', 'arthas', 'medivh', 'lucio'] },
@@ -231,7 +428,7 @@
             { id: 'morales', name: 'Lt. Morales', role: 'Healer', mapScore: { 'Battlefield of Eternity': 5, 'Warhead Junction': 3, 'Blackhearts Bay': 3,'Infernal Shrines': 3, 'Towers of Doom': 3, 'Cursed Hollow': 3, 'Volskaya Foundry': 3, 'Braxis Holdout': 5, 'Alterac Pass': 1, 'Dragon Shire': 3, 'Garden of Terror': 2, 'Sky Temple': 4, 'Tomb of the Spider Queen': 1 }, synergy: ['raynor', 'sghammer', 'johanna', 'etc'], countered: ['garrosh', 'chen', 'zeratul', 'chromie', 'lunara', 'auriel', 'anubarak', 'junkrat'] },
             { id: 'lucio', name: 'Lucio', role: 'Healer', mapScore: { 'Battlefield of Eternity': 5, 'Warhead Junction': 3, 'Blackhearts Bay': 3,'Infernal Shrines': 3, 'Towers of Doom': 5, 'Cursed Hollow': 4, 'Volskaya Foundry': 4, 'Braxis Holdout': 3, 'Alterac Pass': 5, 'Dragon Shire': 4, 'Garden of Terror': 3, 'Sky Temple': 3, 'Tomb of the Spider Queen': 3 }, synergy: ['arthas', 'diablo', 'greymane', 'anubarak', 'valla'], countered: ['deckard', 'diablo', 'varian-t', 'malfurion', 'raynor', 'sghammer'] },
             { id: 'malfurion', name: 'Malfurion', role: 'Healer', mapScore: { 'Battlefield of Eternity': 2, 'Warhead Junction': 3, 'Blackhearts Bay': 3,'Infernal Shrines': 4, 'Towers of Doom': 3, 'Cursed Hollow': 5, 'Volskaya Foundry': 3, 'Braxis Holdout': 2, 'Alterac Pass': 3, 'Dragon Shire': 5, 'Garden of Terror': 3, 'Sky Temple': 2, 'Tomb of the Spider Queen': 2 }, synergy: ['blaze', 'blaze-b', 'chromie', 'guldan', 'jaina', 'kaelthas', 'kelthuzad', 'li-ming', 'nazeebo', 'ragnaros'], countered: ['tracer', 'alarak', 'anubarak', 'artanis', 'jaina', 'kerrigan', 'li-ming'] },
-            { id: 'reghar', name: 'Rehgar', role: 'Healer', mapScore: { 'Battlefield of Eternity': 3, 'Warhead Junction': 4, 'Blackhearts Bay': 5,'Infernal Shrines': 3, 'Towers of Doom': 3, 'Cursed Hollow': 5, 'Volskaya Foundry': 2, 'Braxis Holdout': 1, 'Alterac Pass': 3, 'Dragon Shire': 4, 'Garden of Terror': 5, 'Sky Temple': 5, 'Tomb of the Spider Queen': 2 }, synergy: ['sonya', 'illidan', 'greymane'], countered: ['fenix', 'hanzo', 'kaelthas', 'muradin', 'ana', 'tracer'] },
+            { id: 'rehgar', name: 'Rehgar', role: 'Healer', mapScore: { 'Battlefield of Eternity': 3, 'Warhead Junction': 4, 'Blackhearts Bay': 5,'Infernal Shrines': 3, 'Towers of Doom': 3, 'Cursed Hollow': 5, 'Volskaya Foundry': 2, 'Braxis Holdout': 1, 'Alterac Pass': 3, 'Dragon Shire': 4, 'Garden of Terror': 5, 'Sky Temple': 5, 'Tomb of the Spider Queen': 2 }, synergy: ['sonya', 'illidan', 'greymane'], countered: ['fenix', 'hanzo', 'kaelthas', 'muradin', 'ana', 'tracer'] },
             { id: 'stukov', name: 'Stukov', role: 'Healer', mapScore: { 'Battlefield of Eternity': 1, 'Warhead Junction': 3, 'Blackhearts Bay': 3,'Infernal Shrines': 4, 'Towers of Doom': 3, 'Cursed Hollow': 5, 'Volskaya Foundry': 4, 'Braxis Holdout': 5, 'Alterac Pass': 3, 'Dragon Shire': 3, 'Garden of Terror': 3, 'Sky Temple': 3, 'Tomb of the Spider Queen': 3 }, synergy: ['raynor', 'etc', 'sghammer', 'sylvanas'], countered: ['anubarak', 'genji', 'uther'] },
             { id: 'tyrande', name: 'Tyrande', role: 'Healer', mapScore: { 'Battlefield of Eternity': 5, 'Warhead Junction': 3, 'Blackhearts Bay': 3,'Infernal Shrines': 5, 'Towers of Doom': 4, 'Cursed Hollow': 3, 'Volskaya Foundry': 3, 'Braxis Holdout': 3, 'Alterac Pass': 3, 'Dragon Shire': 5, 'Garden of Terror': 3, 'Sky Temple': 3, 'Tomb of the Spider Queen': 5 }, synergy: ['diablo', 'etc', 'varian-t', 'anubarak', 'li-ming'], countered: ['anubarak', 'muradin', 'zeratul', 'maiev', 'fenix', 'lunara'] },
             { id: 'uther', name: 'Uther', role: 'Healer', mapScore: { 'Battlefield of Eternity': 3, 'Warhead Junction': 1, 'Blackhearts Bay': 3,'Infernal Shrines': 5, 'Towers of Doom': 3, 'Cursed Hollow': 3, 'Volskaya Foundry': 3, 'Braxis Holdout': 1, 'Alterac Pass': 3, 'Dragon Shire': 3, 'Garden of Terror': 3, 'Sky Temple': 3, 'Tomb of the Spider Queen': 3 }, synergy: ['kerrigan', 'greymane', 'etc', 'illidan', 'butcher', 'zuljin', 'malfurion'], countered: ['guldan', 'lunara', 'malthael', 'nazeebo', 'sylvanas', 'zagara'] },
@@ -244,142 +441,240 @@
             { id: 'zarya', name: 'Zarya', role: 'Support', mapScore: { 'Battlefield of Eternity': 5, 'Warhead Junction': 1, 'Blackhearts Bay': 3,'Infernal Shrines': 4, 'Towers of Doom': 3, 'Cursed Hollow': 1, 'Volskaya Foundry': 3, 'Braxis Holdout': 5, 'Alterac Pass': 3, 'Dragon Shire': 3, 'Garden of Terror': 1, 'Sky Temple': 3, 'Tomb of the Spider Queen': 4 }, synergy: ['garrosh', 'sonya', 'valla', 'malfurion', 'yrel', 'leoric'], countered: ['garrosh', 'maiev', 'yrel', 'lunara', 'auriel', 'sylvanas', 'raynor', 'varian-s', 'chromie'] },
         ];
 
+        // --- ROLES & SCORING CONFIG ---
+
         const ROLES = ['Tank', 'Bruiser', 'Melee Assassin', 'Ranged Assassin', 'Healer', 'Support'];
+        // Roles that are not required as a dedicated slot when working out the missing roles
         const EXCLUDEDROLES = ['Melee Assassin', 'Support'];
+        // Roles competing for the two flexible team slots
         const SAMEROLES = ['Melee Assassin', 'Ranged Assassin', 'Support'];
 
-        // Pesi per il calcolo del punteggio
         const SCORE_WEIGHTS = {
             map: 1,
             synergy: 2.5,
             counter: 2.5,
             countered: 2.5,
-            roleBonus: 7.5 // Grande bonus per riempire un ruolo mancante
+            roleBonus: 7.5 // Large bonus for filling a missing role
         };
 
-        // --- FUNZIONI DI INIZIALIZZAZIONE UI ---
+        // --- DRAFT STATE ---
 
-        /** Inizializza le dropdown/checkbox con i dati degli eroi e delle mappe. */
-        function initializeUI() {
-            const mapSelect = document.getElementById('mapSelect');
-            const alliedContainer = document.getElementById('alliedHeroesContainer');
-            const enemyContainer = document.getElementById('enemyHeroesContainer');
-            const bannedContainer = document.getElementById('bannedHeroesContainer');
-            const roleToPick = document.getElementById('roleToPick');
+        const TEAM_LIMITS = { allied: 5, enemy: 5, banned: 6 };
+        const TEAM_LABELS = { allied: 'allies', enemy: 'enemies', banned: 'bans' };
+        const selection = { allied: [], enemy: [], banned: [] };
+        let activeTeam = 'allied';
 
-            // 1. Inizializza Mappe
-            mapSelect.innerHTML = '<option value="">Select Map...</option>';
-            MAPS.forEach(map => {
-                const option = document.createElement('option');
-                option.value = map;
-                option.textContent = map;
-                mapSelect.appendChild(option);
-            });
+        const PAGE_SIZE = 24;
+        let currentPage = 1;
+        const roleFilters = { grid: null, suggestions: null }; // Independent role filters for the hero grid and the recommendations
+        let hasCalculated = false;
 
-            // 2. Inizializza Mappe
-            roleToPick.innerHTML = '<option value="">Select Role...</option>';
+        // --- HERO HELPERS ---
+
+        // Heroes whose image file name differs from their id (or whose role variants share the same image)
+        const HERO_IMAGE_OVERRIDES = {
+            'varian-t': 'varian', 'varian-s': 'varian', 'blaze-b': 'blaze', 'kharazim-dps': 'kharazim',
+            'li-ming': 'liming', 'sghammer': 'sgthammer', 'butcher': 'thebutcher',
+            'morales': 'ltmorales', 'tlv': 'thelostvikings'
+        };
+        // Variants of the same hero in a different role: picking one excludes the other
+        const HERO_TWINS = { 'blaze-b': 'blaze', 'varian-s': 'varian-t', 'kharazim-dps': 'kharazim' };
+        const baseHeroId = id => HERO_TWINS[id] || id;
+        const heroName = id => (HEROES_DATA.find(h => h.id === id) || { name: id }).name;
+
+        const TWINNED_IDS = new Set([...Object.keys(HERO_TWINS), ...Object.values(HERO_TWINS)]);
+        const SORTED_HEROES = [...HEROES_DATA].sort((a, b) => a.name.localeCompare(b.name));
+
+        function heroImageSrc(hero) {
+            return `heroes_profiles/${HERO_IMAGE_OVERRIDES[hero.id] || hero.id}.webp`;
+        }
+
+        function roleIconSrc(role) {
+            return `icon/Role_${role.replace(/ /g, '_')}_Icon.webp`;
+        }
+
+        /** Returns the team the hero (or its variant) was picked for, otherwise null. */
+        function teamOf(heroId) {
+            const base = baseHeroId(heroId);
+            return Object.keys(selection).find(team => selection[team].some(id => baseHeroId(id) === base)) || null;
+        }
+
+        /** Hero image, falling back to the initials if the file does not exist. */
+        function heroImageHtml(hero) {
+            const initials = hero.name.replace(/[^A-Za-z]/g, '').slice(0, 2);
+            return `<img src="${heroImageSrc(hero)}" alt="${hero.name}" loading="lazy"
+                         onerror="this.replaceWith(document.createTextNode('${initials}'))">`;
+        }
+
+        /** Builds a row of role icon buttons; clicking the active role again clears the filter. */
+        function buildRoleFilter(key, containerId, onChange) {
+            const container = document.getElementById(containerId);
             ROLES.forEach(role => {
-                const option = document.createElement('option');
-                option.value = role;
-                option.textContent = role;
-                roleToPick.appendChild(option);
-            });
-            
-
-            // 3. Inizializza Eroi (Alleati & Avversari)
-            // Filtra per eroi con dati completi (ovvero: hanno il mapScore per la prima mappa)
-            const availableHeroes = HEROES_DATA.filter(hero => hero.mapScore[MAPS[0]]);
-            
-            availableHeroes.sort((a, b) => a.name.localeCompare(b.name)).forEach(hero => {
-                const checkboxHtml = `
-                    <label class="flex items-center space-x-2 text-sm">
-                        <input type="checkbox" name="__HERO_TYPE__" value="${hero.id}" 
-                               class="hero-checkbox form-checkbox h-4 w-4 __COLOR_CLASS__ bg-gray-700 border-gray-600 rounded">
-                        <span>${hero.name} <span class="text-gray-400">(${hero.role})</span></span>
-                    </label>
-                `;
-
-                // Checkbox Bannati
-                bannedContainer.innerHTML += checkboxHtml
-                    .replace('__HERO_TYPE__', 'bannedHero')
-                    .replace('__COLOR_CLASS__', 'text-green-500');
-                
-
-                // Checkbox Alleati
-                alliedContainer.innerHTML += checkboxHtml
-                    .replace('__HERO_TYPE__', 'alliedHero')
-                    .replace('__COLOR_CLASS__', 'text-green-500');
-                
-                // Checkbox Avversari
-                enemyContainer.innerHTML += checkboxHtml
-                    .replace('__HERO_TYPE__', 'enemyHero')
-                    .replace('__COLOR_CLASS__', 'text-purple-500');
-            });
-
-            // Aggiunge listener per limitare a 4 alleati e 5 nemici
-            setupCheckboxLimits('alliedHero', 4);
-            setupCheckboxLimits('enemyHero', 5);
-        }
-        
-        /** Imposta il limite di selezione per i gruppi di checkbox. */
-        function setupCheckboxLimits(name, limit) {
-            const checkboxes = document.querySelectorAll(`input[name="${name}"]`);
-            checkboxes.forEach(checkbox => {
-                checkbox.addEventListener('change', () => {
-                    const checked = document.querySelectorAll(`input[name="${name}"]:checked`);
-                    
-                    // Impedisce la selezione se il limite è superato
-                    if (checked.length > limit) {
-                        checkbox.checked = false;
-                        displayMessage(`Errore: Puoi selezionare un massimo di ${limit} Eroi ${name.includes('allied') ? 'Alleati' : 'Avversari'}.`, true);
-                        return; 
-                    }
-                    
-                    // Logica di prevenzione doppia selezione (Alleato vs Nemico)
-                    const otherName = name === 'alliedHero' ? 'enemyHero' : 'alliedHero';
-                    const otherCheckbox = document.querySelector(`input[name="${otherName}"][value="${checkbox.value}"]`);
-                    
-                    if (checkbox.checked && otherCheckbox && otherCheckbox.checked) {
-                         otherCheckbox.checked = false;
-                         displayMessage(`Attenzione: ${HEROES_DATA.find(h => h.id === checkbox.value).name} è stato rimosso dalla lista ${otherName === 'alliedHero' ? 'Alleati' : 'Avversari'}. Un eroe può essere selezionato solo una volta.`, false);
-                    }
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'role-btn';
+                btn.dataset.role = role;
+                btn.title = role;
+                btn.setAttribute('aria-pressed', 'false');
+                btn.innerHTML = `<img src="${roleIconSrc(role)}" alt="${role}"
+                                      onerror="this.replaceWith(document.createTextNode('${role.slice(0, 2)}'))">`;
+                btn.addEventListener('click', () => {
+                    roleFilters[key] = roleFilters[key] === role ? null : role;
+                    container.querySelectorAll('.role-btn').forEach(b => {
+                        const isActive = b.dataset.role === roleFilters[key];
+                        b.classList.toggle('active', isActive);
+                        b.setAttribute('aria-pressed', String(isActive));
+                    });
+                    onChange();
                 });
+                container.appendChild(btn);
             });
         }
 
-        /** Mostra un messaggio di stato/errore nell'area risultati */
+        // --- BOARD RENDERING ---
+
+        /** Toggles a hero: removes it if already picked, otherwise adds it to the active team (respecting the team limit). */
+        function onHeroClick(heroId) {
+            const currentTeam = teamOf(heroId);
+            if (currentTeam) {
+                selection[currentTeam] = selection[currentTeam].filter(id => baseHeroId(id) !== baseHeroId(heroId));
+            } else if (selection[activeTeam].length >= TEAM_LIMITS[activeTeam]) {
+                displayMessage(`Error: you can select at most ${TEAM_LIMITS[activeTeam]} heroes for ${TEAM_LABELS[activeTeam]}.`, true);
+                return;
+            } else {
+                selection[activeTeam].push(heroId);
+            }
+            renderBoard();
+        }
+
+        /** Renders the fixed number of slots of a team, filled with the picked heroes. */
+        function renderSlots(team, containerId) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+            for (let i = 0; i < TEAM_LIMITS[team]; i++) {
+                const heroId = selection[team][i];
+                const hero = heroId && HEROES_DATA.find(h => h.id === heroId);
+                const slot = document.createElement('div');
+                slot.className = `slot ${team}${hero ? ' filled' : ''}`;
+                slot.dataset.index = i + 1;
+                if (hero) {
+                    slot.title = hero.name;
+                    slot.innerHTML = heroImageHtml(hero);
+                    slot.addEventListener('click', () => onHeroClick(hero.id));
+                } else {
+                    // Clicking an empty slot makes that team the active one
+                    slot.addEventListener('click', () => {
+                        activeTeam = team;
+                        renderBoard();
+                    });
+                }
+                container.appendChild(slot);
+            }
+            document.getElementById(`${team}Count`).textContent = `${selection[team].length}/${TEAM_LIMITS[team]}`;
+        }
+
+        /** Renders the current page of heroes, applying the search text and the role filter. */
+        function renderGrid() {
+            const query = document.getElementById('heroSearch').value.trim().toLowerCase();
+            const heroes = SORTED_HEROES.filter(hero =>
+                (!roleFilters.grid || hero.role === roleFilters.grid) &&
+                `${hero.name} ${hero.role}`.toLowerCase().includes(query));
+
+            const totalPages = Math.max(1, Math.ceil(heroes.length / PAGE_SIZE));
+            currentPage = Math.min(currentPage, totalPages);
+
+            const grid = document.getElementById('heroGrid');
+            grid.innerHTML = '';
+            heroes.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE).forEach(hero => {
+                const label = TWINNED_IDS.has(hero.id) ? `${hero.name} (${hero.role})` : hero.name;
+                const tile = document.createElement('div');
+                tile.className = `hero-tile ${teamOf(hero.id) || ''}`.trim();
+                tile.title = `${hero.name} (${hero.role})`;
+                tile.innerHTML = `<div class="portrait">${heroImageHtml(hero)}</div><div class="hero-name">${label}</div>`;
+                tile.addEventListener('click', () => onHeroClick(hero.id));
+                grid.appendChild(tile);
+            });
+            if (heroes.length === 0) {
+                grid.innerHTML = '<p class="empty-note">No heroes found.</p>';
+            }
+
+            renderPagination(totalPages);
+        }
+
+        /** Renders the page buttons; hidden when everything fits in a single page. */
+        function renderPagination(totalPages) {
+            const container = document.getElementById('heroPagination');
+            container.innerHTML = '';
+            if (totalPages <= 1) return;
+
+            const addButton = (label, page, { disabled = false, active = false } = {}) => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = `page-btn${active ? ' active' : ''}`;
+                btn.textContent = label;
+                btn.disabled = disabled;
+                btn.addEventListener('click', () => {
+                    currentPage = page;
+                    renderGrid();
+                });
+                container.appendChild(btn);
+            };
+
+            addButton('\u2039', currentPage - 1, { disabled: currentPage === 1 });
+            for (let page = 1; page <= totalPages; page++) {
+                addButton(String(page), page, { active: page === currentPage });
+            }
+            addButton('\u203A', currentPage + 1, { disabled: currentPage === totalPages });
+        }
+
+        /** Re-renders the whole board: team switcher, slots, active panel and hero grid. */
+        function renderBoard() {
+            document.querySelectorAll('.team-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.team === activeTeam);
+            });
+
+            renderSlots('allied', 'alliedSlots');
+            renderSlots('enemy', 'enemySlots');
+            renderSlots('banned', 'bannedSlots');
+            ['allied', 'enemy', 'banned'].forEach(team => {
+                document.getElementById(`${team}Panel`).classList.toggle('active', team === activeTeam);
+            });
+            renderGrid();
+        }
+
+        /** Shows a status/error message in the results area */
         function displayMessage(message, isError = true) {
             const list = document.getElementById('suggestionsList');
-            const colorClass = isError ? 'bg-yellow-900 text-yellow-300' : 'bg-blue-900 text-blue-300';
-            list.innerHTML = `<p class="text-center p-4 rounded-lg ${colorClass}">${message}</p>`;
+            list.innerHTML = `<p class="notice ${isError ? 'error' : 'info'}">${message}</p>`;
         }
 
 
-        // --- LOGICA DI DRAFTING ---
+        // --- DRAFT LOGIC ---
 
-        /** Calcola i suggerimenti in base agli input dell'utente. */
+        /** Calculates suggestions based on the user's input. */
         function calculateSuggestions() {
             const selectedMap = document.getElementById('mapSelect').value;
-            const alliedIds = Array.from(document.querySelectorAll('input[name="alliedHero"]:checked')).map(el => el.value);
-            const enemyIds = Array.from(document.querySelectorAll('input[name="enemyHero"]:checked')).map(el => el.value);
-            const bannedIds = Array.from(document.querySelectorAll('input[name="bannedHero"]:checked')).map(el => el.value);
-            const roleToPick = document.getElementById('roleToPick').value;
+            const alliedIds = selection.allied;
+            const enemyIds = selection.enemy;
+            const bannedIds = selection.banned;
+            const roleToPick = roleFilters.suggestions;
             
-            // Verifica input minimi
+            // Check minimum input
             if (!selectedMap) {
                 return displayMessage("Please, select a Map.");
             }
+            hasCalculated = true;
 
-            // Identifica gli eroi già selezionati (sia alleati che nemici)
-            const pickedHeroIds = [...alliedIds, ...enemyIds, ...bannedIds];
+            // Heroes already picked or banned, including their role variants
+            const pickedBaseIds = new Set([...alliedIds, ...enemyIds, ...bannedIds].map(baseHeroId));
 
-            // Calcola i ruoli mancanti nella squadra alleata
+            // Work out the roles missing from the allied team
             const alliedHeroes = HEROES_DATA.filter(h => alliedIds.includes(h.id));
             const enemyHeroes = HEROES_DATA.filter(h => enemyIds.includes(h.id));
             const alliedRoles = alliedHeroes.map(h => h.role);
 
             const neededRoles = ROLES.filter(role => !alliedRoles.includes(role) && !EXCLUDEDROLES.includes(role));
-            // DPZ = DPS + Support, ruoli che competono per i 2 slot flessibili
+            // DPZ = DPS + Support, roles competing for the 2 flexible slots
             const flexibleRoles = alliedRoles.filter(role => SAMEROLES.includes(role));
             if (flexibleRoles.length < 2) {
                 neededRoles.push('Melee Assassin', 'Ranged Assassin', 'Support');
@@ -388,18 +683,19 @@
 
             const suggestions = [];
 
-            // Itera su tutti gli eroi disponibili per trovare il migliore
+            // Iterate over all available heroes to find the best one
             for (const candidateHero of HEROES_DATA) {
-                // Salta gli eroi già scelti
+                // Skip heroes outside the role filter
                 if (roleToPick && candidateHero.role !== roleToPick){
                     continue;
                 }
 
-                if (pickedHeroIds.includes(candidateHero.id)) {
+                // Skip heroes that are already picked or banned
+                if (pickedBaseIds.has(baseHeroId(candidateHero.id))) {
                     continue;
                 }
                 
-                // Salta gli eroi che non hanno punteggi per la mappa selezionata (dovrebbe essere raro con l'inizializzazione)
+                // Skip heroes without a score for the selected map (should be rare)
                 if (!candidateHero.mapScore[selectedMap]) {
                     continue;
                 }
@@ -408,70 +704,41 @@
                 let score = 0;
                 let explanation = [];
                 
-                // 1. Punteggio Mappa (Peso 1.5)
+                // 1. Map score
                 const mapScore = candidateHero.mapScore[selectedMap] || 0;
                 score += mapScore * SCORE_WEIGHTS.map;
-                explanation.push(`Mappa (${selectedMap}): ${mapScore * SCORE_WEIGHTS.map.toFixed(1)} punti (Valore base: ${mapScore}/5)`);
+                explanation.push(`Map (${selectedMap}): ${(mapScore * SCORE_WEIGHTS.map).toFixed(1)} points (Base value: ${mapScore}/5)`);
 
-                // 2. Punteggio Sinergia (Alleati) (Peso 2.0)
-                let synergyScore = 0;
-                let synergyName="";
-                alliedIds.forEach(alliedId => {
-                    if (candidateHero.synergy && candidateHero.synergy.includes(alliedId)) {
-                        synergyName += alliedId + " "
-                        synergyScore += 1; // +1 per ogni alleato con cui ha sinergia
-                    }
-                });
-                score += synergyScore * SCORE_WEIGHTS.synergy;
-                if (synergyScore > 0) {
-                    explanation.push(`Sinergia Alleata: ${synergyScore * SCORE_WEIGHTS.synergy.toFixed(1)} punti (Sinergia con ${synergyName})`);
+                // 2. Synergy with allies: +1 for each ally it pairs well with
+                const synergyAllies = alliedIds.filter(alliedId => candidateHero.synergy && candidateHero.synergy.includes(alliedId));
+                score += synergyAllies.length * SCORE_WEIGHTS.synergy;
+                if (synergyAllies.length > 0) {
+                    explanation.push(`Ally Synergy: ${(synergyAllies.length * SCORE_WEIGHTS.synergy).toFixed(1)} points (Synergy with ${synergyAllies.map(heroName).join(', ')})`);
                 }
 
-                // 3. Punteggio Counter (Avversari) (Peso 2.5)
-                let counterScore = 0;
-                let counterName="";
-                enemyHeroes.forEach(enemyHeroes => {
-                    // Controlla se l'eroe candidato è contrastato dall'eroe nemico
-                    if (enemyHeroes.countered.includes(candidateHero.id)) {
-                        counterName += enemyHeroes.id + " "
-                        counterScore += 1; // +1 per ogni nemico che il candidato contrasta
-                    }
-                });
-                score += counterScore * SCORE_WEIGHTS.counter;
-                if (counterScore > 0) {
-                    explanation.push(`Counter Avversario: ${counterScore * SCORE_WEIGHTS.counter.toFixed(1)} punti (Contrasta ${counterName})`);
+                // 3. Counter: +1 for each enemy the candidate counters
+                const counteredEnemies = enemyHeroes.filter(enemy => enemy.countered.includes(candidateHero.id));
+                score += counteredEnemies.length * SCORE_WEIGHTS.counter;
+                if (counteredEnemies.length > 0) {
+                    explanation.push(`Enemy Counter: ${(counteredEnemies.length * SCORE_WEIGHTS.counter).toFixed(1)} points (Counters ${counteredEnemies.map(enemy => enemy.name).join(', ')})`);
                 }
 
-                // 4. Countered Score (Opponents)
-                let counteredScore = 0;
-                let counteredList = [];
-
-                enemyIds.forEach(enemyId => {
-                    if (candidateHero.countered && candidateHero.countered.includes(enemyId)) {
-                        counteredScore -= 1;
-                        const enemyHero = HEROES_DATA.find(h => h.id === enemyId);
-                        counteredList.push(enemyHero ? enemyHero.name : enemyId);
-                    }
-                });
-
-                score += counteredScore * SCORE_WEIGHTS.countered;
-
-                if (counteredScore < 0) {
-                    explanation.push(
-                        `Countered by: ${(counteredScore * SCORE_WEIGHTS.countered).toFixed(1)} points (by: ${counteredList.join(', ')})`
-                    );
+                // 4. Countered: -1 for each enemy that counters the candidate
+                const countersOfCandidate = enemyIds.filter(enemyId => candidateHero.countered && candidateHero.countered.includes(enemyId));
+                const counteredScore = -countersOfCandidate.length * SCORE_WEIGHTS.countered;
+                score += counteredScore;
+                if (countersOfCandidate.length > 0) {
+                    explanation.push(`Countered by: ${counteredScore.toFixed(1)} points (by: ${countersOfCandidate.map(heroName).join(', ')})`);
                 }
 
-                
-                // 5. Bonus Ruolo Mancante (Peso 5.0)
-                let roleBonus = 0;
+                // 5. Bonus for filling a missing role
                 if (neededRoles.includes(candidateHero.role)) {
-                    roleBonus = SCORE_WEIGHTS.roleBonus;
-                    score += roleBonus;
-                    explanation.push(`**BONUS RUOLO**: ${roleBonus.toFixed(1)} punti (Manca il ruolo: ${candidateHero.role})`);
+                    score += SCORE_WEIGHTS.roleBonus;
+                    explanation.push(`Role Bonus: ${SCORE_WEIGHTS.roleBonus.toFixed(1)} points (Missing role: ${candidateHero.role})`);
                 }
 
                 suggestions.push({
+                    heroId: candidateHero.id,
                     hero: candidateHero.name,
                     role: candidateHero.role,
                     score: score,
@@ -479,63 +746,56 @@
                 });
             }
 
-            // Ordina per punteggio decrescente
+            // Sort by descending score
             suggestions.sort((a, b) => b.score - a.score);
 
-            // Visualizza i risultati
+            // Show the results
             renderSuggestions(suggestions.slice(0, 10), alliedRoles, neededRoles);
         }
 
-        /** Renderizza la lista di suggerimenti nella UI. */
+        /** Renders the list of suggestions in the UI. */
         function renderSuggestions(topSuggestions, alliedRoles, neededRoles) {
             const list = document.getElementById('suggestionsList');
             
-            // Visualizza la composizione attuale del team
-            const alliedRolesString = alliedRoles.length > 0 ? alliedRoles.join(', ') : 'Nessun ruolo selezionato';
-            const neededRolesString = neededRoles.length > 0 ? neededRoles.join(', ') : 'Tutti i ruoli sono coperti (teoricamente)';
+            // Show the current team composition
+            const roleChip = role => `<span class="chip">${role}</span>`;
+            const alliedRolesHtml = alliedRoles.length > 0 ? [...new Set(alliedRoles)].map(roleChip).join('') : '<span class="chip-empty">No role selected</span>';
+            const neededRolesHtml = neededRoles.length > 0 ? [...new Set(neededRoles)].map(roleChip).join('') : '<span class="chip-empty">All roles are covered (theoretically)</span>';
 
             let html = `
-                <div class="mb-6 p-4 rounded-lg bg-gray-800 border border-gray-700">
-                    <p class="text-sm text-gray-400">Ruoli Alleati Selezionati: <span class="text-green-300 font-medium">${alliedRolesString}</span></p>
-                    <p class="text-sm text-gray-400">Ruoli Mancanti Prioritari: <span class="text-red-300 font-bold">${neededRolesString}</span></p>
+                <div class="role-summary">
+                    <div class="role-summary-row"><span class="section-label">Allied roles</span>${alliedRolesHtml}</div>
+                    <div class="role-summary-row"><span class="section-label">Priority missing roles</span>${neededRolesHtml}</div>
                 </div>
             `;
 
             if (topSuggestions.length === 0) {
-                html += '<p class="text-center text-yellow-300 bg-yellow-900 p-4 rounded-lg">Nessun eroe disponibile. Assicurati di non aver selezionato tutti gli eroi.</p>';
+                html += '<p class="notice error">No heroes available. Make sure you have not selected every hero, and check the role filter.</p>';
             } else {
                 topSuggestions.forEach((suggestion, index) => {
-                    const rankColor = index === 0 ? 'bg-yellow-500' : index === 1 ? 'bg-gray-400' : index === 2 ? 'bg-amber-700' : 'bg-gray-600';
-                    const roleColor = {
-                        'Tank': 'text-red-500',
-                        'Bruiser': 'text-orange-500',
-                        'Melee Assassin': 'text-yellow-500',
-                        'Ranged Assassin': 'text-purple-500',
-                        'Healer': 'text-green-500',
-                        'Support': 'text-teal-500'
-                    }[suggestion.role] || 'text-gray-400';
+                    const hero = HEROES_DATA.find(h => h.id === suggestion.heroId);
+                    const roleClass = `role-${suggestion.role.toLowerCase().replace(/ /g, '-')}`;
 
                     html += `
-                        <div class="suggested-hero card p-4 rounded-xl transition-shadow cursor-pointer bg-gray-800 border border-gray-700 mb-4">
-                            <div class="flex items-center justify-between">
-                                <div class="flex items-center space-x-4">
-                                    <span class="w-8 h-8 flex items-center justify-center rounded-full font-bold text-gray-900 ${rankColor}">${index + 1}</span>
-                                    <div>
-                                        <h3 class="text-xl font-bold ${roleColor}">${suggestion.hero}</h3>
-                                        <p class="text-sm text-gray-400">${suggestion.role}</p>
-                                    </div>
+                        <div class="suggested-hero card" style="animation-delay: ${index * 40}ms">
+                            <div class="suggestion-row">
+                                <span class="rank${index === 0 ? ' first' : ''}">${index + 1}</span>
+                                <div class="slot filled neutral large">${hero ? heroImageHtml(hero) : ''}</div>
+                                <div class="suggestion-info">
+                                    <h3 class="suggestion-name">${suggestion.hero}</h3>
+                                    <p class="suggestion-role ${roleClass}"><img src="${roleIconSrc(suggestion.role)}" alt="" class="role-icon">${suggestion.role}</p>
                                 </div>
-
-                                <div class="text-right">
-                                    <span class="text-2xl font-extrabold text-red-400">${suggestion.score.toFixed(1)}</span>
-                                    <span class="text-sm text-gray-500 block">Punteggio Totale</span>
+                                <div class="suggestion-score">
+                                    <span class="score-value">${suggestion.score.toFixed(1)}</span>
+                                    <span class="score-label">Score</span>
                                 </div>
+                                <svg class="chevron" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.17l3.71-3.94a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd"/></svg>
                             </div>
 
-                            <!-- Sezione espandibile -->
-                            <div class="details hidden mt-3 p-4 bg-gray-900 rounded-lg border border-gray-700">
-                                <h4 class="text-lg font-bold mb-2 text-white border-b border-gray-600 pb-1">Dettaglio Punteggio:</h4>
-                                <ul class="text-sm text-gray-300 space-y-1 list-disc pl-5">
+                            <!-- Expandable section -->
+                            <div class="details hidden">
+                                <h4 class="section-label">Score Breakdown</h4>
+                                <ul>
                                     ${suggestion.explanation.map(exp => `<li>${exp}</li>`).join('')}
                                 </ul>
                             </div>
@@ -546,30 +806,55 @@
 
             list.innerHTML = html;
 
-            // Attiva il toggle al click su ciascuna card
+            // Toggle details when clicking a card
             document.querySelectorAll('.suggested-hero').forEach(card => {
                 card.addEventListener('click', () => {
-                    const details = card.querySelector('.details');
-                    details.classList.toggle('hidden');
+                    card.querySelector('.details').classList.toggle('hidden');
+                    card.classList.toggle('open');
                 });
             });
         }
 
 
 
-        // --- ESECUZIONE ---
+        // --- INITIALIZATION ---
+
+        /** Populates the map dropdown, builds the role filters and wires up the board controls. */
+        function initializeUI() {
+            const mapSelect = document.getElementById('mapSelect');
+            mapSelect.innerHTML = '<option value="">Select Map...</option>';
+            MAPS.forEach(map => {
+                const option = document.createElement('option');
+                option.value = map;
+                option.textContent = map;
+                mapSelect.appendChild(option);
+            });
+
+            document.querySelectorAll('.team-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    activeTeam = btn.dataset.team;
+                    renderBoard();
+                });
+            });
+
+            document.getElementById('heroSearch').addEventListener('input', () => {
+                currentPage = 1;
+                renderGrid();
+            });
+
+            buildRoleFilter('grid', 'heroRoleFilter', () => {
+                currentPage = 1;
+                renderGrid();
+            });
+            // Recalculate right away when the recommendation filter changes, but only if results are already shown
+            buildRoleFilter('suggestions', 'suggestionRoleFilter', () => {
+                if (hasCalculated) calculateSuggestions();
+            });
+
+            renderBoard();
+        }
+
         window.onload = initializeUI;
-        // === Funzione di filtro per la ricerca eroi ===
-        function filterHeroes(containerId, searchTerm) {
-            const container = document.getElementById(containerId);
-        const query = searchTerm.toLowerCase();
-        const checkboxes = container.querySelectorAll('label');
-    
-        checkboxes.forEach(label => {
-        const text = label.textContent.toLowerCase();
-        label.style.display = text.includes(query) ? '' : 'none';
-    });
-}
 
     </script>
 </body>
