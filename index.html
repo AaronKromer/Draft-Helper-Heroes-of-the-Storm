@@ -490,6 +490,15 @@
             return `heroes_profiles/${HERO_IMAGE_OVERRIDES[hero.id] || hero.id}.webp`;
         }
 
+        function preloadHeroImages() {
+            const sources = new Set(HEROES_DATA.map(heroImageSrc));
+            sources.forEach(src => {
+                const image = new Image();
+                image.fetchPriority = 'low';
+                image.src = src;
+            });
+        }
+
         function roleIconSrc(role) {
             return `icon/Role_${role.replace(/ /g, '_')}_Icon.webp`;
         }
@@ -503,7 +512,7 @@
         /** Hero image, falling back to the initials if the file does not exist. */
         function heroImageHtml(hero) {
             const initials = hero.name.replace(/[^A-Za-z]/g, '').slice(0, 2);
-            return `<img src="${heroImageSrc(hero)}" alt="${hero.name}" loading="lazy"
+            return `<img src="${heroImageSrc(hero)}" alt="${hero.name}" loading="eager"
                          onerror="this.replaceWith(document.createTextNode('${initials}'))">`;
         }
 
@@ -853,6 +862,7 @@
             });
 
             renderBoard();
+            preloadHeroImages();
         }
 
         window.onload = initializeUI;
