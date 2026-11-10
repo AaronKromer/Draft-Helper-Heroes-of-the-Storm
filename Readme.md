@@ -30,10 +30,6 @@ python -m http.server 8000
 
 Then visit [http://localhost:8000](http://localhost:8000).
 
-## Deployment
-
-Deploy the project folder to a static hosting service, preserving its file structure. The page uses relative paths for portraits in `heroes_profiles/` and icons in `icon/`, so include both folders alongside `index.html`.
-
 ## Project structure
 
 - `index.html`: interface, hero data, and draft and recommendation logic.
